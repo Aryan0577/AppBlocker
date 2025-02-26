@@ -134,7 +134,7 @@ fun UserTypeScreen(navController: NavController) {
             // Continue Button
             Button(
                 onClick = {
-                   if(selectedType=="parent") navController.navigate("dashboard")
+                   if(selectedType=="parent") navController.navigate("pin")
                      else navController.navigate("cDashboard")     },
                 modifier = Modifier
                     .fillMaxWidth()

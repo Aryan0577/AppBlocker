@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -68,7 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.todo.appblocker.blocking.AppBlockerUtils
 import com.todo.appblocker.blocking.AppBlockerUtils.setupAppBlocker
-import com.todo.appblocker.blocking.updateBlockedAppsList
+import com.todo.appblocker.saveUserSession
 import com.todo.appblocker.screens.utils.ScreenTimeInfoItem
 import com.todo.appblocker.screens.utils.TopAppUsage
 import com.todo.appblocker.screens.utils.formatScreenTime
@@ -98,7 +99,7 @@ data class AppInfo(
 fun ParentDashboard(navController: NavController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-
+    saveUserSession(context,false,"parent")
     // State for apps
     var allApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     var blockedApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
@@ -194,8 +195,7 @@ fun ParentDashboard(navController: NavController) {
 
         // Save to SharedPreferences
         saveBlockedAppsToPrefs(sharedPreferences, blockedApps.map { it.packageName })
-        updateBlockedAppsList(context)
-
+        AppBlockerUtils.updateBlockedAppsList(context)
     }
 
     Scaffold(
@@ -232,9 +232,11 @@ fun ParentDashboard(navController: NavController) {
                             tint = Color.White
                         )
                     }
-                    IconButton(onClick = { /* Settings Action */ }) {
+                    IconButton(onClick = { navController.navigate("login")
+                        saveUserSession(context,true, "none")
+                    }) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = Icons.Default.Logout,
                             contentDescription = "Settings",
                             tint = Color.White
                         )
@@ -253,10 +255,10 @@ fun ParentDashboard(navController: NavController) {
                 containerColor = Color(0xFF3A1C71)
             ) {
                 Icon(
-                    imageVector = if (showBlockedOnly) Icons.Default.List else Icons.Default.Lock,
+                    imageVector = if (showBlockedOnly) Icons.Default.List else Icons.Filled.Lock,
                     contentDescription = if (showBlockedOnly) "Show All Apps" else "Show Blocked Apps",
                     tint = Color.White,
-                    modifier = Modifier.rotate(fabRotation.value)
+                    modifier = Modifier.rotate(360f)
                 )
             }
         }
