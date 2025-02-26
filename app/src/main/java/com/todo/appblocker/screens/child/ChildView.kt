@@ -1,14 +1,6 @@
-package com.todo.appblocker
+package com.todo.appblocker.screens.child
 
-import android.app.usage.UsageStats
-import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.content.Intent
-import android.content.SharedPreferences
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
-import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -29,18 +21,20 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.navigation.NavController
-import kotlinx.coroutines.Dispatchers
+import com.todo.appblocker.screens.utils.ScreenTimeInfoItem
+import com.todo.appblocker.screens.utils.TopAppUsage
+import com.todo.appblocker.screens.utils.formatScreenTime
+import com.todo.appblocker.screens.utils.loadAllInstalledApps
+
+import com.todo.appblocker.screens.parent.AppInfo
+import com.todo.appblocker.screens.utils.CompactTopAppUsageItem
+import com.todo.appblocker.screens.utils.getDetailedAppUsageStats
+import com.todo.appblocker.screens.utils.loadBlockedAppsFromPrefs
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -224,7 +218,7 @@ fun ChildDashboard(navController: NavController) {
                         .heightIn(max = 200.dp)
                 ) {
                     items(topApps) { app ->
-                        TopAppItem(app = app)
+                        CompactTopAppUsageItem(app)
                     }
                 }
 
@@ -287,60 +281,6 @@ fun ChildDashboard(navController: NavController) {
         }
     }
 }
-
-@Composable
-fun TopAppItem(app: TopAppUsage) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // App icon
-            Image(
-                bitmap = app.icon.toBitmap().asImageBitmap(),
-                contentDescription = app.appName,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-            )
-
-            // App details
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp)
-            ) {
-                Text(
-                    text = app.appName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Usage time
-            Text(
-                text = formatScreenTime(app.usageTime),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF3A1C71),
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
 @Composable
 fun ChildAppItem(app: AppInfo) {
     Card(

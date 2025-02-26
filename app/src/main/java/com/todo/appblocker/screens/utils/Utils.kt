@@ -1,24 +1,21 @@
-package com.todo.appblocker
+package com.todo.appblocker.screens.utils
 
-import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import android.os.Build
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import com.todo.appblocker.screens.parent.AppInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
-import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 fun saveBlockedAppsToPrefs(prefs: SharedPreferences, blockedPackageNames: List<String>) {
@@ -145,26 +142,7 @@ fun formatScreenTime(timeInMillis: Long): String {
     }
 }
 
-fun loadBlockedAppsFromPrefs(sharedPreferences: SharedPreferences): List<String> {
-    val blockedAppsJson = sharedPreferences.getString("blocked_apps", "[]") ?: "[]"
-    val blockedAppsList = mutableListOf<String>()
 
-    try {
-        val jsonArray = JSONArray(blockedAppsJson)
-        for (i in 0 until jsonArray.length()) {
-            blockedAppsList.add(jsonArray.getString(i))
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-
-    return blockedAppsList
-}
-
-
-// Data class for app info
-
-// Data class for top app usage
 data class TopAppUsage(
     val appName: String,
     val packageName: String,
@@ -173,84 +151,3 @@ data class TopAppUsage(
     val isBlocked:Boolean
 )
 // Fixed getDetailedAppUsageStats function
-suspend fun getDetailedAppUsageStats(context: Context): Triple<Map<String, Long>, Long, List<TopAppUsage>> =
-    withContext(Dispatchers.IO) {
-        val usageStatsMap = mutableMapOf<String, Long>()
-        var totalUsageTime = 0L
-        val topApps = mutableListOf<TopAppUsage>()
-        val packageManager = context.packageManager
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            try {
-                val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-
-                // Set time range to today
-                val calendar = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }
-                val startTime = calendar.timeInMillis
-                val endTime = System.currentTimeMillis()
-
-                // Get daily usage stats
-                val queryUsageStats = usageStatsManager.queryUsageStats(
-                    UsageStatsManager.INTERVAL_DAILY,
-                    startTime,
-                    endTime
-                ).filter { it.lastTimeUsed >= startTime }
-
-                // Get installed apps list to filter system apps
-                val installedApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                val nonSystemApps = installedApps.filter { !isSystemApp(it) }.map { it.packageName }.toSet()
-
-                // Process stats and calculate total usage time for non-system apps only
-                queryUsageStats.forEach { stat ->
-                    val timeInForeground =
-                        stat.totalTimeVisible
-
-                    if (timeInForeground > 0 && stat.packageName in nonSystemApps) {
-                        usageStatsMap[stat.packageName] = timeInForeground
-                        totalUsageTime += timeInForeground  // Add only non-system apps' usage time
-                    }
-                }
-
-                // Get app details for top used apps
-                val sortedApps = queryUsageStats
-                    .filter { it.packageName in nonSystemApps && it.totalTimeInForeground > 0 }
-                    .sortedByDescending {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            it.totalTimeVisible
-                        } else {
-                            it.totalTimeInForeground
-                        }
-                    }
-
-                for (stat in sortedApps) {
-                    try {
-                        val appInfo = packageManager.getApplicationInfo(stat.packageName, 0)
-                        val appName = packageManager.getApplicationLabel(appInfo).toString()
-                        val icon = packageManager.getApplicationIcon(stat.packageName)
-                        val usageTime = usageStatsMap[stat.packageName] ?: 0L
-
-                        topApps.add(
-                            TopAppUsage(
-                                appName = appName,
-                                packageName = stat.packageName,
-                                usageTime = usageTime,
-                                icon = icon,
-                                isBlocked = false
-                            )
-                        )
-                    } catch (_: PackageManager.NameNotFoundException) {
-                        // App uninstalled, ignore
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        Triple(usageStatsMap, totalUsageTime, topApps)
-    }

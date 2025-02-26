@@ -1,4 +1,4 @@
-package com.todo.appblocker
+package com.todo.appblocker.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image

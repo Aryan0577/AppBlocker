@@ -1,4 +1,4 @@
-package com.todo.appblocker
+package com.todo.appblocker.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -178,7 +177,8 @@ fun LoginScreen(navController: NavController) {
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF3A1C71)
-                        )
+                        ),
+                        enabled = (email=="test@gmail.com" && password=="123")
                     ) {
                         Text(
                             text = "LOGIN",

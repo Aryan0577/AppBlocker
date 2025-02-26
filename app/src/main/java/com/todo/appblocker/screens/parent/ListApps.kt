@@ -1,28 +1,18 @@
-package com.todo.appblocker
+package com.todo.appblocker.screens.parent
 
-import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.content.SharedPreferences
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import android.os.Build
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.with
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,12 +44,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -73,24 +60,26 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
 import androidx.navigation.NavController
-import kotlinx.coroutines.Dispatchers
+import com.todo.appblocker.blocking.AppBlockerUtils
+import com.todo.appblocker.blocking.AppBlockerUtils.setupAppBlocker
+import com.todo.appblocker.blocking.updateBlockedAppsList
+import com.todo.appblocker.screens.utils.ScreenTimeInfoItem
+import com.todo.appblocker.screens.utils.TopAppUsage
+import com.todo.appblocker.screens.utils.formatScreenTime
+
+import com.todo.appblocker.screens.utils.loadInstalledApps
+import com.todo.appblocker.screens.utils.saveBlockedAppsToPrefs
+import com.todo.appblocker.screens.utils.AnimatedAppItem
+import com.todo.appblocker.screens.utils.CompactTopAppUsageItem
+import com.todo.appblocker.screens.utils.getDetailedAppUsageStats
+import com.todo.appblocker.screens.utils.loadBlockedAppsFromPrefs
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import java.util.Calendar
-import java.util.concurrent.TimeUnit
 
 
 // Model for app information
@@ -145,6 +134,7 @@ fun ParentDashboard(navController: NavController) {
 
     // Load apps on initial composition
     LaunchedEffect(key1 = Unit) {
+        setupAppBlocker(context)
         coroutineScope.launch {
             val apps = loadInstalledApps(context)
             val savedBlockedApps = loadBlockedAppsFromPrefs(sharedPreferences)
@@ -204,6 +194,8 @@ fun ParentDashboard(navController: NavController) {
 
         // Save to SharedPreferences
         saveBlockedAppsToPrefs(sharedPreferences, blockedApps.map { it.packageName })
+        updateBlockedAppsList(context)
+
     }
 
     Scaffold(
@@ -515,218 +507,11 @@ fun ParentDashboard(navController: NavController) {
                         )
                     }
 
-                    // Add some bottom padding for better UX
                     item {
                         Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun AnimatedAppItem(
-    app: AppInfo,
-    onToggleBlock: () -> Unit
-) {
-    var animatedProgress by remember { mutableStateOf(0f) }
-
-    LaunchedEffect(key1 = Unit) {
-        animatedProgress = 0f
-        animate(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
-        ) { value, _ ->
-            animatedProgress = value
-        }
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .alpha(animatedProgress)
-            .scale(0.9f + (0.1f * animatedProgress)),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // App icon with animated background when blocked
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (app.isBlocked)
-                            Color(0xFFFFECED)
-                        else
-                            Color.Transparent
-                    )
-                    .padding(if (app.isBlocked) 4.dp else 0.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    bitmap = app.icon.toBitmap().asImageBitmap(),
-                    contentDescription = app.appName,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(8.dp))
-                )
-            }
-
-            // App details
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp)
-            ) {
-                Text(
-                    text = app.appName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Text(
-                    text = app.packageName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // Usage time for today with animated appearance
-                if (app.usageTimeToday > 0) {
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn() + expandVertically()
-                    ) {
-                        Text(
-                            text = "Used: ${formatScreenTime(app.usageTimeToday)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFD76D77),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-
-            // Block/Unblock switch with animation
-            val switchProgress = animateFloatAsState(
-                targetValue = if (app.isBlocked) 1f else 0f,
-                animationSpec = tween(durationMillis = 300)
-            )
-
-            Switch(
-                checked = app.isBlocked,
-                onCheckedChange = { onToggleBlock() },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFF3A1C71),
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = Color.Gray.copy(alpha = 0.5f)
-                )
-            )
-        }
-    }
-}
-
-@Composable
-fun CompactTopAppUsageItem(app: TopAppUsage) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // App icon
-        Image(
-            bitmap = app.icon.toBitmap().asImageBitmap(),
-            contentDescription = app.appName,
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(6.dp))
-        )
-
-        // App name and usage time
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp)
-        ) {
-            Text(
-                text = app.appName,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = formatScreenTime(app.usageTime),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFFD76D77)
-                )
-
-                // Usage bar visualization - more compact
-                LinearProgressIndicator(
-                    progress = { app.usageTime.toFloat() / 7200000f }, // Scale against 2 hours
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = Color(0xFF3A1C71),
-                    trackColor = Color.LightGray
-                )
-            }
-        }
-
-        // Show if app is blocked
-        if (app.isBlocked) {
-            Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = "Blocked",
-                tint = Color(0xFF3A1C71),
-                modifier = Modifier.size(16.dp)
-            )
-        }
-    }
-}
-
-// Helper function to animate entering items
-@Composable
-fun <T> animateItem(
-    item: T,
-    content: @Composable (T) -> Unit
-) {
-    var animatedProgress by remember { mutableStateOf(0f) }
-
-    LaunchedEffect(key1 = item) {
-        animatedProgress = 0f
-        animate(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 300)
-        ) { value, _ ->
-            animatedProgress = value
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .alpha(animatedProgress)
-            .scale(0.8f + (0.2f * animatedProgress))
-    ) {
-        content(item)
     }
 }

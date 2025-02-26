@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">AppBlocker</string>
+    <string name="accessibility_service_description">TimeOUT uses this permission to detect when you open blocked apps and prevent access to them.</string>
+
 </resources>
